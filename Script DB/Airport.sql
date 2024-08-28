@@ -18,14 +18,17 @@ begin
 	id int identity(1,1) primary key,
 	Date_of_Birth date not null,
 	Name varchar(30) not null,
+	constraint Check_DOB check (Date_of_Birth >= dateadd(year, -100, getdate()))
 	);
+
+	create index Customer_Name on Customer(Name);
 end
 go
 
 if not exists (select 1 from Customer)
 begin
 	declare @length tinyint=20;
-	declare @counter tinyint=0;
+	declare @counter tinyint=1;
 	declare @minDate date='1960-01-01';
 	declare @maxDate date='2014-12-31';
 
@@ -50,7 +53,10 @@ begin
 	create table Country(
 	id int identity(1,1) primary key,
 	Name varchar(30) not null,
+	constraint Check_name unique (Name),
 	);
+
+	create index Country_Name on Country(Name);
 end
 go
 
@@ -71,21 +77,45 @@ go
 
 --------------------------------------------------------------------------------------------------------------------------
 
-if object_id('Passport', 'U') is null
+if object_id('Document_Type','U') is null
 begin
-	create table Passport(
+	create table Document_Type(
+	id int identity(1,1) primary key,
+	Name varchar(30) not null,
+	constraint Check_nameDT unique (Name), 
+	);
+
+	create index Country_DocumentT on Document_Type(Name);
+end
+
+if not exists(select 1 from Document_Type)
+begin
+	insert into Document_Type(Name) values
+	('Passport'),
+	('CI');
+end
+
+--------------------------------------------------------------------------------------------------------------------------
+
+if object_id('Document', 'U') is null
+begin
+	create table Document(
 	id int identity(1,1) primary key,
 	Date_of_Issue date not null,
 	Valid_Date date not null,
+	Document_Type_id int not null,
 	Customer_id int not null,
 	Country_id int not null,
 	foreign key (Customer_id) references Customer(id),
 	foreign key (Country_id) references Country(id),
+	foreign key (Document_Type_id) references Document_Type(id),
 	);
+
+	create index Document_ValidD on Document(Valid_Date);
 end 
 go
 
-if not exists(select 1 from Passport)
+if not exists(select 1 from Document)
 begin
 	declare @length tinyint=30;
 	declare @minIssueDate date='2010-01-01';
@@ -95,6 +125,33 @@ begin
 	declare @validDate date;
 	declare @customerId tinyint;
 	declare @countryId tinyint;
+	declare @documentTypeId tinyint;
+
+	declare @tempCustomer table (id int);
+
+	insert into @tempCustomer (id)
+	select id from Customer;
+
+	while exists(select 1 from @tempCustomer)
+	begin
+		select top 1 @customerId = id from @tempCustomer;
+
+		set @issueDate=dateadd(day,floor(rand()*datediff(day,@minIssueDate,@maxIssueDate)+1),@minIssueDate);
+		set @validDate=dateadd(year,1+floor(rand()*9),@issueDate);
+
+		set @documentTypeId =1+floor(rand()*2);
+
+		select @countryId=id from Country order by newid() offset @counter % (
+			select count(*) from Country
+		) rows fetch next 1 rows only;
+
+		insert into Document(Date_of_Issue,Valid_Date,Customer_id,Country_id, Document_Type_id) 
+		values(@issueDate, @validDate, @customerId, @countryId, @documentTypeId);
+
+		delete from @tempCustomer where id=@customerId;
+
+		set @counter=@counter+1;
+	end
 
 	while @counter<@length
 	begin
@@ -102,7 +159,7 @@ begin
 	set @issueDate=dateadd(day,floor(rand()*datediff(day,@minIssueDate,@maxIssueDate)+1),@minIssueDate);
 	set @validDate=dateadd(year,1+floor(rand()*9),@issueDate);
 
-	select @customerId=id from Customer order by newid() offset @counter % (
+	select @customerId=id from Customer order by newid() offset @counter % ( 
 		select count(*) from Customer
 	) rows fetch next 1 rows only;
 
@@ -110,9 +167,10 @@ begin
 		select count(*) from Country
 	) rows fetch next 1 rows only;
 
+	set @documentTypeId =1+floor(rand()*2);
 
-	insert into Passport(Date_of_Issue,Valid_Date,Customer_id,Country_id) 
-	values(@issueDate, @validDate, @customerId, @countryId);
+	insert into Document(Date_of_Issue,Valid_Date,Customer_id,Country_id, Document_Type_id) 
+	values(@issueDate, @validDate, @customerId, @countryId, @documentTypeId);
 
 	set @counter=@counter+1;
 	end
@@ -130,6 +188,8 @@ begin
 	Name varchar(30) not null,
 	foreign key (Country_id) references Country(id)
 	);
+
+	create index City on City(Name);
 end
 go
 
@@ -158,8 +218,11 @@ begin
 	id int identity(1,1) primary key,
 	Name varchar(30) not null,
 	City_id int not null,
-	foreign key (City_id) references City(id)
+	foreign key (City_id) references City(id),
+	unique (Name),
 	);
+
+	create index Airport_Name on Airport(Name);
 end 
 go
 
@@ -209,10 +272,14 @@ begin
 	create table Frequent_Flyer_Card(
 	FFC_Number int identity(1,1) primary key,
 	Miles int not null,
-	Meal_Code int not null,
+	Meal_Code int not null default 3,
 	Customer_id int not null,
-	foreign key (Customer_id) references Customer(id)
+	foreign key (Customer_id) references Customer(id),
+	constraint Check_miles check (Miles >= 100 and Miles <=8000),
+	constraint Check_meal_code check (Meal_Code >=1 and Meal_Code <=10),
 	);
+
+	create index FFC_CustomerId on Frequent_Flyer_Card(Customer_id);
 end 
 go
 
@@ -220,8 +287,8 @@ if not exists(select 1 from Frequent_Flyer_Card)
 begin
 	declare @length tinyint=(select count(*) from Customer);
 	declare @counter int=1;
-	declare @maxMiles int=100000;
-	declare @minMiles int=1000;
+	declare @maxMiles int=8000;
+	declare @minMiles int=100;
 	declare @maxMealCode tinyint=10;
 	declare @minMealCode tinyint=1;
 
@@ -245,14 +312,54 @@ begin
 	create table Airplane(
 	Registration_Number int identity(1,1) primary key,
 	Begin_of_Operation date not null,
-	Status varchar(30) not null,
+	Status varchar(15) not null default 'Active',
 	Plane_Model_id int not null,
 	foreign key (Plane_Model_id) references Plane_Model(id),
+	constraint Check_status check (Status in('Active', 'Inactive', 'Maintenance'))
 	);
+
+	create index Airplane_Status on Airplane(Registration_Number, Status);
 end 
 go
 
+if not exists(select 1 from Airplane)
+begin
+
+	declare @length tinyint=50;
+	declare @minBeginDate date='2000-01-01';
+	declare @maxBeginDate date= getdate();
+	declare @counter tinyint=0;
+	declare @beginDate date;
+	declare @status varchar(15);
+	declare @planeModelId int;
+	declare @randomValue tinyint;
+
+	while @counter<@length
+	begin
+		set @beginDate=dateadd(day,floor(rand()*datediff(day,@minBeginDate, @maxBeginDate)+1),@minBeginDate);
+
+		set @randomValue=floor(rand()*3)
+
+		if @randomValue=0
+			set @status='Active'
+		else if @randomValue=1
+			set @status='Inactive'
+		else
+			set @status='Maintenance'
+
+		select @planeModelId=id from Plane_Model order by newid() offset @counter %(
+			select count(*) from Plane_Model
+		) rows fetch next 1 rows only;
+
+		insert into Airplane(Begin_of_Operation, Status, Plane_Model_id) values
+		(@beginDate,@status, @planeModelId)
+
+		set @counter=@counter +1;
+	end
+end
+
 --------------------------------------------------------------------------------------------------------------------------
+
 
 if object_id('Flight_Number', 'U') is null
 begin
@@ -261,14 +368,85 @@ begin
 	Departure_Time time not null,
 	Description varchar(50) not null,
 	Type bit not null,
-	Airline varchar(20) not null,
+	Airline varchar(20) not null,	--hacer una tabla
 	Airport_Start int not null,
 	Airport_Goal int not null,
 	foreign key (Airport_Start) references Airport(id),
 	foreign key (Airport_Goal) references Airport(id),
+	constraint Check_airtport check (Airport_Start <> Airport_Goal),
 	);
+
+	create index Travel on Flight_Number(Airport_Start, Airport_Goal);
 end 
 go
+
+if not exists(select 1 from Flight_Number)
+begin 
+
+	declare @length tinyint=30;
+	declare @counter tinyint=0;
+	declare @departureTime time;
+	declare @description varchar(50);
+	declare @type bit;
+	declare @airline varchar(20);
+	declare @airportStart int;
+	declare @airportGoal int;
+	declare @offset int;
+
+	declare @airlines table (name varchar(20));
+	insert into @airlines (name)
+	values ('Airline A'), ('Airline B'), ('Airline C'), ('Airline D');
+
+	while @counter<@length
+	begin
+		
+		set @departureTime=cast(dateadd(minute,floor(rand()*1440),'00:00:00')as time)
+
+		set @type =floor(rand()*2);
+
+		select @airline=name from @airlines order by newid() offset 0 rows fetch next 1 row only;
+
+		set @offset=floor(rand()*(select count(*) from Airport));
+
+		select @airportStart=id from Airport order by newid() offset @offset rows fetch next 1 row only;
+
+		while @airportGoal is null or @airportGoal=@airportStart
+		begin
+			set @offset=floor(rand()*(select count(*) from Airport));
+			select @airportGoal=id from Airport order by newid() offset @offset rows fetch next 1 row only;
+		end
+		set @description='Flight '+cast(@airportStart as varchar(15))+' to'+cast(@airportGoal as varchar(15))
+
+		insert into Flight_Number(Departure_Time, Description, Type, Airline, Airport_Start, Airport_Goal)
+		values(@departureTime, @description, @type, @airline, @airportStart, @airportGoal);
+
+		set @airportGoal=null;
+
+		set @counter=@counter+1;
+	end
+end
+
+--------------------------------------------------------------------------------------------------------------------------
+
+if object_id('Category', 'U') is null
+begin
+	create table Category(
+	id int identity(1,1) primary key,
+	Name varchar(20) not null,
+	constraint Check_NameCategory check(Name in ('Economic','Premium Economic', 'Business','First Class'))
+	);
+
+	create index Category_Name on Category(Name);
+end
+
+if not exists(select 1 from Category)
+begin
+	insert into Category(Name) values
+	('Economic'),
+	('Premium Economic'), 
+	('Business'),
+	('First Class');
+end
 
 --------------------------------------------------------------------------------------------------------------------------
 
@@ -278,10 +456,42 @@ begin
 	Ticketing_Code int identity(1,1) primary key,
 	Number int not null,
 	Customer_id int not null,
-	foreign key (Customer_id) references Customer(id)
+	Category_id int not null,
+	foreign key (Customer_id) references Customer(id),
+	foreign key (Category_id) references Category(id),
 	);
+
+	create index Ticket_info on Ticket(Customer_id, Category_id, Number);
 end 
 go
+
+if not exists(select 1 from Ticket)
+begin
+	declare @length tinyint=30;
+	declare @counter tinyint=0;
+	declare @ticketNumber int;
+	declare @customerId int;
+	declare @categoryId int;
+	declare @categoryCount int;
+	declare @offset int;
+
+	select @categoryCount=count(*) from Category;
+
+	while @counter < @length
+	begin
+		set @ticketNumber=1000+floor(rand()*9000);
+
+		select @customerId=id from Customer order by newid()  offset 0 rows fetch next 1 row only;
+
+		select @categoryId=id from Category order by newid() offset 0 rows fetch next 1 row only;
+
+
+		insert into Ticket(Number, Customer_id, Category_id)
+		values(@ticketNumber, @customerId, @categoryId)
+
+		set @counter=@counter+1;
+	end
+end 
 
 --------------------------------------------------------------------------------------------------------------------------
 
@@ -295,9 +505,45 @@ begin
 	Check_In_Counter bit not null,
 	Flight_Number_id int not null,
 	foreign key (Flight_Number_id) references Flight_Number(id),
+	constraint Check_FD check (Flight_Date >= getdate()),
 	);
+
+	create index Flight_info on Flight(Gate, Boarding_Time);
 end 
 go
+
+if not exists (select 1 from Flight)
+begin
+	declare @length tinyint = 30;
+	declare @counter tinyint = 0;
+	declare @boardingtime time;
+	declare @flightdate date;
+	declare @gate tinyint;
+	declare @checkincounter bit;
+	declare @flightnumberid int;
+	declare @maxflightnumberid int;
+
+	select @maxflightnumberid = max(id) from flight_number;
+
+	while @counter < @length
+	begin
+		set @boardingtime = cast(dateadd(minute, floor(rand() * 1440), '00:00:00') as time);
+
+		set @flightdate = dateadd(day, floor(rand() * 365) + 1, cast(getdate() as date));
+
+		set @gate = floor(rand() * 256);
+
+		set @checkincounter = floor(rand() * 2);
+		set @flightnumberid = floor(rand() * @maxflightnumberid) + 1;
+
+		insert into flight (boarding_time, flight_date, gate, check_in_counter, flight_number_id)
+		values (@boardingtime, @flightdate, @gate, @checkincounter, @flightnumberid);
+
+		set @counter = @counter + 1;
+	end
+end
+go
+
 
 --------------------------------------------------------------------------------------------------------------------------
 
@@ -305,14 +551,52 @@ if object_id('Seat', 'U') is null
 begin
 	create table Seat(
 	id int identity(1,1) primary key,
-	Size int not null,
+	Size varchar(10) not null default 'Medium', 
 	Number int not null,
 	Location varchar(30) not null,
 	Plane_Model_id int not null,
 	foreign key (Plane_Model_id) references Plane_Model(id),
+	constraint Check_size check (size in ('Small', 'Medium', 'Large'))
 	);
+
+	create index Seat_info on Seat(Size, Location);
 end 
 go
+
+if not exists (select 1 from seat)
+begin
+	declare @length tinyint = 30;
+	declare @counter tinyint = 0;
+	declare @size varchar(10);
+	declare @number int;
+	declare @location varchar(30);
+	declare @planemodelid int;
+	declare @maxplanemodelid int;
+
+	select @maxplanemodelid = max(id) from plane_model;
+
+	while @counter < @length
+	begin
+		set @size = case floor(rand() * 3)
+			when 0 then 'small'
+			when 1 then 'medium'
+			else 'large'
+		end;
+
+		set @number = floor(rand() * 100) + 1;
+
+		set @location = 'row ' + cast(floor(rand() * 20) + 1 as varchar(2)) + ', seat ' + cast(floor(rand() * 30) + 1 as varchar(2));
+
+		set @planemodelid = floor(rand() * @maxplanemodelid) + 1;
+
+		insert into seat (size, number, location, plane_model_id)
+		values (@size, @number, @location, @planemodelid);
+
+		set @counter = @counter + 1;
+	end
+end
+go
+
 
 --------------------------------------------------------------------------------------------------------------------------
 
@@ -328,6 +612,34 @@ begin
 end 
 go
 
+if not exists (select 1 from available_seat)
+begin
+    declare @length tinyint = 30;
+    declare @counter tinyint = 0;
+    declare @flightid int;
+    declare @seatid int;
+    declare @maxflightid int;
+    declare @maxseatid int;
+
+    select @maxflightid = max(id) from flight;
+
+    select @maxseatid = max(id) from seat;
+
+    while @counter < @length
+    begin
+        set @flightid = floor(rand() * @maxflightid) + 1;
+
+        set @seatid = floor(rand() * @maxseatid) + 1;
+
+        insert into available_seat (flight_id, seat_id)
+        values (@flightid, @seatid);
+
+        set @counter = @counter + 1;
+    end
+end
+go
+
+
 --------------------------------------------------------------------------------------------------------------------------
 
 if object_id('Coupon', 'U') is null
@@ -342,9 +654,73 @@ begin
 	Flight_id int not null,
 	foreign key (Ticketing_Code) references Ticket(Ticketing_Code),
 	foreign key (Flight_id) references Flight(id),
+	constraint Check_MCC check (Meal_Code >=1 and Meal_Code <=10),
 	);
+
+	create index Coupon_info on Coupon(Class, Meal_Code, Date_of_Redemption);
 end 
 go
+
+if not exists (select 1 from coupon)
+begin
+    declare @length tinyint = 30;
+    declare @counter tinyint = 0;
+    declare @dateofredemption date;
+    declare @class varchar(20);
+    declare @standby varchar(20);
+    declare @mealcode int;
+    declare @ticketingcode int;
+    declare @flightid int;
+    declare @maxticketingcode int;
+    declare @maxflightid int;
+
+    select @maxticketingcode = max(ticketing_code) from ticket;
+    select @maxflightid = max(id) from flight;
+
+    declare @classes table (classname varchar(20));
+    insert into @classes (classname)
+    values ('economy'), ('premium economy'), ('business'), ('first class');
+
+    declare @standbyoptions table (standbyoption varchar(20));
+    insert into @standbyoptions (standbyoption)
+    values ('yes'), ('no');
+
+    while @counter < @length
+    begin
+        set @dateofredemption = dateadd(day, floor(rand() * 30), getdate());
+
+        select top 1 @class = classname
+        from @classes
+        order by newid();
+
+        select top 1 @standby = standbyoption
+        from @standbyoptions
+        order by newid();
+
+        set @mealcode = floor(rand() * 10) + 1;
+
+        select @ticketingcode = ticketing_code
+        from (
+            select ticketing_code, row_number() over (order by newid()) as rn
+            from ticket
+        ) as sub
+        where rn = floor(rand() * (select count(*) from ticket)) + 1;
+
+        select @flightid = id
+        from (
+            select id, row_number() over (order by newid()) as rn
+            from flight
+        ) as sub
+        where rn = floor(rand() * (select count(*) from flight)) + 1;
+
+        insert into coupon (date_of_redemption, class, standby, meal_code, ticketing_code, flight_id)
+        values (@dateofredemption, @class, @standby, @mealcode, @ticketingcode, @flightid);
+
+        set @counter = @counter + 1;
+    end
+end
+go
+
 
 --------------------------------------------------------------------------------------------------------------------------
 
@@ -359,6 +735,44 @@ begin
 end 
 go
 
+if not exists (select 1 from available_seat_coupon)
+begin
+    declare @length tinyint = 30;
+    declare @counter tinyint = 0;
+    declare @couponid int;
+    declare @availableseatid int;
+
+    declare @maxcouponid int;
+    declare @maxavailableseatid int;
+
+    select @maxcouponid = max(id) from coupon;
+    select @maxavailableseatid = max(id) from available_seat;
+
+    while @counter < @length
+    begin
+        select @couponid = id
+        from (
+            select id, row_number() over (order by newid()) as rn
+            from coupon
+        ) as sub
+        where rn = floor(rand() * (select count(*) from coupon)) + 1;
+
+        select @availableseatid = id
+        from (
+            select id, row_number() over (order by newid()) as rn
+            from available_seat
+        ) as sub
+        where rn = floor(rand() * (select count(*) from available_seat)) + 1;
+
+        insert into available_seat_coupon (coupon_id, available_seat_id)
+        values (@couponid, @availableseatid);
+
+        set @counter = @counter + 1;
+    end
+end
+go
+
+
 --------------------------------------------------------------------------------------------------------------------------
 
 if object_id('Pieces_of_Luggage', 'U') is null
@@ -369,6 +783,41 @@ begin
 	Weight int not null,
 	Coupon_id int not null,
 	foreign key (Coupon_id) references Coupon(id),
+	constraint Check_weight check(Weight >=0 and Weight <=50)
 	);
+
+	create index POF_info on Pieces_of_Luggage(Weight, Number);
 end 
+go
+
+if not exists (select 1 from pieces_of_luggage)
+begin
+    declare @length tinyint = 30;
+    declare @counter tinyint = 0;
+    declare @number int;
+    declare @weight int;
+    declare @couponid int;
+    declare @maxcouponid int;
+
+    select @maxcouponid = max(id) from coupon;
+
+    while @counter < @length
+    begin
+        set @number = floor(rand() * 1000) + 1;
+
+        set @weight = floor(rand() * 51);
+
+        select @couponid = id
+        from (
+            select id, row_number() over (order by newid()) as rn
+            from coupon
+        ) as sub
+        where rn = floor(rand() * (select count(*) from coupon)) + 1;
+
+        insert into pieces_of_luggage (number, weight, coupon_id)
+        values (@number, @weight, @couponid);
+
+        set @counter = @counter + 1;
+    end
+end
 go

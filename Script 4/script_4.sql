@@ -1,3 +1,4 @@
+
 if db_id('script4') is null
 begin
 	create database script4;
@@ -161,8 +162,10 @@ begin
         Airline varchar(20) not null,
         Airport_Start int not null,
         Airport_Goal int not null,
+		Plane_id int not null,
         foreign key (Airport_Start) references Airport(id) ON DELETE NO ACTION,
         foreign key (Airport_Goal) references Airport(id) ON DELETE NO ACTION,
+		foreign key (Plane_id) references Plane_Model(id),
         CONSTRAINT Check_Airport check (Airport_Start <> Airport_Goal)
     );
 

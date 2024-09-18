@@ -99,7 +99,8 @@ begin
         ID int identity(1,1) primary key,
         Size varchar(10) not null default 'Medium' check (Size IN ('Small', 'Medium', 'Large')),
         Number int not null unique check (Number > 0),
-        Location varchar(30) not null check (len(Location) > 2),
+         Location varchar(30) check (Location IN('Window','Aisle
+','Middle','Left','Right')),
         Plane_Model_ID int not null,
         foreign key (Plane_Model_ID) references Plane_Model(ID) ON DELETE NO ACTION
     );
@@ -113,7 +114,7 @@ begin
     create table Flight(
         ID int identity(1,1) primary key,
         Boarding_Time time not null,
-        Flight_Date date not null unique check (Flight_Date >= CONVERT(DATE, GETDATE())),
+        Flight_Date date not null check (Flight_Date >= CONVERT(DATE, GETDATE())),
         Gate tinyint not null check (Gate BETWEEN 1 AND 255),
         Check_In_Counter bit not null,
         Flight_Number_id int not null,
@@ -128,7 +129,8 @@ if object_id('Flight_Scale', 'U') is null
 begin
     create table Flight_Scale(
         ID int identity(1,1) primary key,
-        Scale_Type varchar(30) not null check (len(Scale_Type) > 5),
+        Scale_Type varchar(30) check (Scale_Type IN('
+Technical scale','Regular scale','Connected flight')),
 		Scale_Time time not null,
     );
 end
@@ -170,7 +172,7 @@ if object_id('Airline', 'U') is null
 begin
     create table Airline(
         ID int identity(1,1) primary key,
-        Name varchar(30) not null check (len(Name) > 5),
+        Name varchar(100) not null check (len(Name) > 5),
 		Country_ID int not null,
 		foreign key (Country_ID) references Country(ID) ON DELETE NO ACTION,
     );
@@ -184,7 +186,6 @@ begin
     create table Passenger_Type(
         ID int identity(1,1) primary key,
         Name varchar(30) not null check (len(Name) > 5),
-		Description varchar(50) not null check (len(Description) > 10),
     );
 end
 go
@@ -208,7 +209,7 @@ if object_id('Person_Type', 'U') is null
 begin
     create table Person_Type(
         ID int identity(1,1) primary key,
-        Name varchar(30) not null check (len(Name) > 5),
+        Name varchar(30) not null check (Name IN('natural person','artificial person')),
     );
 end
 go
@@ -219,8 +220,8 @@ if object_id('Person', 'U') is null
 begin
     create table Person(
         ID int identity(1,1) primary key,
-        Name varchar(50) not null check (len(Name) > 5),
-		Phone int not null,
+        Name varchar(50) not null unique check (len(Name) > 5),
+		Phone varchar(20) not null,
 		Email varchar(50) not null check (len(Email) > 10),
 		Type varchar(10) not null default 'Passenger' check ( Type in('Crew Member','Passenger','Both')),
 		Person_Type_ID int not null,
@@ -323,7 +324,6 @@ begin
         ID int identity(1,1) primary key,
         NewDepartureDate date not null,
 		NewDepartureTime time not null,
-		Reason varchar(50) not null check (len(Reason) > 10),
 		Flight_Cancellation_ID int not null,
 		foreign key (Flight_Cancellation_ID) references Flight_Cancellation(ID) ON DELETE NO ACTION,
     );
@@ -336,7 +336,7 @@ if object_id('Payment_Type', 'U') is null
 begin
     create table Payment_Type(
         ID int identity(1,1) primary key,
-        Name varchar(30) not null check (len(Name) > 5),
+        Name varchar(40) not null check (len(Name) > 2),
     );
 end
 go
@@ -362,7 +362,7 @@ if object_id('Document_Type', 'U') is null
 begin
     create table Document_Type(
         ID int identity(1,1) primary key,
-        Name varchar(30) not null check (len(Name) > 5),
+        Name varchar(50) not null check (len(Name) > 2),
     );
 end
 go
@@ -527,3 +527,160 @@ begin
 	);
 end 
 go
+
+
+
+
+
+--Insert date country
+EXEC InsertCountry;
+
+--Insert date City
+EXEC InsertCity;
+
+--Insert date Airport
+EXEC InsertAirport;
+
+--Insert date PlanelModel
+EXEC InsertPlanelModel;
+
+--Insert date Airplane
+EXEC InsertAirplane @NumberOfRows = 30;
+
+--Insert date FlightNumbers
+EXEC InsertFlightNumbers @NumberOfRows = 1500;
+
+--Insert date Seat
+EXEC InsertSeats @NumberOfRows = 200;
+
+--Insert date Flight
+EXEC InsertFlights @NumberOfRows = 1500;
+
+--Insert date Flight
+EXEC InsertFlights @NumberOfRows = 1500;
+
+--Insert date FlightScales
+EXEC InsertFlightScales @NumberOfRows = 800;
+
+--Insert date InsertScales
+EXEC InsertScales @NumberOfRows = 800;
+
+--Insert date Available_Seat
+EXEC InsertAvailable_Seat @NumberOfRows = 100;
+
+--Insert date Airline
+EXEC InsertAirline;
+
+--Insert date Passenger_Type
+EXEC InsertPassenger_Type;
+
+--Insert date Type_Assigment
+EXEC InsertTypeAssignments @NumberOfRows = 100;
+
+--Insert date Person_Type
+EXEC InsertPerson_Type;
+
+--Insert date Passenger
+EXEC LoadPersonDataFrom @FilePath = 'C:\Users\usuario\Desktop\uagrm\2-2024\soport\Script\person.csv'--cambiar la ruta del archivo
+EXEC InsertDataFromTempToPerson;
+
+--Insert date Passenger
+EXEC InsertPassengers @NumberOfRows = 200;
+
+--Insert date Crew_Member
+EXEC InsertCrewMembers @NumberOfRows = 30;
+
+--Insert date Crew_Rol
+EXEC InsertCrew_Rol;
+
+--Insert date Crew_Assigment
+EXEC InsertCrewAssignments @NumberOfRows = 20;
+
+--Insert date Frequent_Flyer_Card
+EXEC InsertFrequentFlyerCards @NumberOfRows = 200;
+
+--Insert date Flight_Cancellation
+EXEC InsertFlightCancellations @NumberOfRows = 50;
+
+--Insert date Flight_Reprograming
+EXEC InsertFlightReprogramings @NumberOfRows = 50;
+
+--Insert date Payment_Type
+EXEC InsertPayment_Type;
+
+--Insert date Payment
+EXEC InsertPayments @NumberOfRows = 100;
+
+--Insert date Document_Type
+EXEC InsertDocument_Type;
+
+--Insert date Document
+EXEC InsertDocuments @NumberOfRows = 100;
+
+--Insert date Category
+EXEC InsertCategory;
+
+--Insert date Ticket
+EXEC InsertTickets @NumberOfRows = 500;
+
+--Insert date Reserve
+EXEC InsertReserves @NumberOfRows = 100;
+
+--Insert date Cancellation
+EXEC InsertCancellations @NumberOfRows = 30;
+
+--Insert date Coupon
+EXEC InsertCoupons @NumberOfRows = 500;
+
+--Insert date Boarding_Pass
+EXEC InsertBoardingPasses @NumberOfRows = 450;
+
+--Insert date Pieces_of_Luggage
+EXEC InsertPiecesOfLuggage @NumberOfRows = 450;
+
+--Insert date Baggage_Check_In
+EXEC InsertPiecesOfLuggage @NumberOfRows = 450;
+
+--Insert date Available_Seat_Coupon
+EXEC InsertAvailableSeatCoupons @NumberOfRows = 350;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Insertar 20 aviones aleatorios
+EXEC InsertAirplanes @NumberOfRows = 20;
+
+-- Insertar 10 números de seats aleatorios
+EXEC InsertFlightNumbers @NumberOfRows = 20;
+
+
+-- Crear una tabla temporal para cargar los datos desde el CSV
+CREATE TABLE #TempPersonData (
+    Name VARCHAR(50),
+    Phone VARCHAR(20),
+    Email VARCHAR(50)
+);
+
+-- Cargar los datos del CSV a la tabla temporal
+BULK INSERT #TempPersonData
+FROM 'C:\Users\usuario\Desktop\uagrm\2-2024\soport\Script\person.csv'--cambiar la ruta del archivo
+WITH (
+    FIELDTERMINATOR = ',',
+    ROWTERMINATOR = '\n',
+    FIRSTROW = 2 -- Asume que la primera fila es el encabezado
+);
+Go

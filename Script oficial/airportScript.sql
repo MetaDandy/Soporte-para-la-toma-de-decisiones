@@ -581,7 +581,7 @@ EXEC InsertTypeAssignments @NumberOfRows = 100;
 EXEC InsertPerson_Type;
 
 --Insert date Passenger
-EXEC LoadPersonDataFrom @FilePath = 'C:\Users\usuario\Desktop\uagrm\2-2024\soport\Script\person.csv'--cambiar la ruta del archivo
+EXEC LoadPersonDataFrom ;--@FilePath = 'C:\Users\usuario\Desktop\uagrm\2-2024\soport\Script\person.csv'--cambiar la ruta del archivo
 EXEC InsertDataFromTempToPerson;
 
 --Insert date Passenger

@@ -1,3 +1,5 @@
+use airportScript;
+go
 --Procedure for country
 CREATE PROCEDURE InsertCountry
 AS
@@ -361,7 +363,6 @@ GO
 --======================================================================
 -- Crear el procedimiento para cargar datos desde el CSV
 CREATE PROCEDURE LoadPersonDataFrom
-    @FilePath NVARCHAR(255) -- Ruta del archivo CSV
 AS
 BEGIN
     -- Crear una tabla temporal para cargar los datos desde el CSV
@@ -370,10 +371,10 @@ BEGIN
         Phone VARCHAR(20),
         Email VARCHAR(50)
     );
-
+	
     -- Cargar los datos del CSV a la tabla temporal
     BULK INSERT #TempPersonData
-    FROM @FilePath
+    FROM 'C:\Users\usuario\Desktop\uagrm\2-2024\soport\Script\person.csv'--cambiar la ruta del archivo
     WITH (
         FIELDTERMINATOR = ',',
         ROWTERMINATOR = '\n',
@@ -599,7 +600,7 @@ BEGIN
     WHILE @i < @NumberOfRows
     BEGIN
         -- Insertar en la tabla Flight_Reprograming
-        INSERT INTO Flight_Reprograming (NewDepartureDate, NewDepartureTime, Reason, Flight_Cancellation_ID)
+        INSERT INTO Flight_Reprograming (NewDepartureDate, NewDepartureTime, Flight_Cancellation_ID)
         SELECT 
             -- Nueva fecha de salida aleatoria en los próximos 30 días
             DATEADD(DAY, ABS(CHECKSUM(NEWID()) % 31), GETDATE()) AS NewDepartureDate,

@@ -113,12 +113,10 @@ BEGIN
 
     WHILE @i < @NumberOfRows
     BEGIN
-        INSERT INTO Flight_Number (Departure_Time, Description, Type, Airport_Start, Airport_Goal, Plane_id)
+        INSERT INTO Flight_Number (Departure_Time, Type, Airport_Start, Airport_Goal, Plane_id)
         SELECT 
             -- Hora de salida aleatoria entre las 00:00 y las 23:59
             CONVERT(TIME, DATEADD(MINUTE, ABS(CHECKSUM(NEWID()) % 1440), '00:00:00')) AS Departure_Time,
-            -- Descripción aleatoria con al menos 5 caracteres
-            LEFT(NEWID(), ABS(CHECKSUM(NEWID()) % 46) + 5) AS Description,
             -- Tipo aleatorio (0 o 1)
             ABS(CHECKSUM(NEWID()) % 2) AS Type,
             -- Aeropuerto de salida aleatorio
@@ -202,30 +200,14 @@ GO
 --=======================================================================
 --Procedure for FlightScales
 CREATE PROCEDURE InsertFlightScales
-    @NumberOfRows INT -- Cantidad a insertar
 AS
 BEGIN
-    DECLARE @i INT = 0;
-
-    WHILE @i < @NumberOfRows
-    BEGIN
-        -- Insertar en la tabla Flight_Scale
-        INSERT INTO Flight_Scale (Scale_Type, Scale_Time)
-        SELECT
-            -- Tipo de escala aleatorio (Technical scale, Regular scale, Connected flight)
-            CASE ABS(CHECKSUM(NEWID()) % 3)
-                WHEN 0 THEN 'Technical scale'
-                WHEN 1 THEN 'Regular scale'
-                WHEN 2 THEN 'Connected flight'
-            END AS Scale_Type,
-            -- Hora de escala aleatoria entre las 00:00 y las 23:59
-            CONVERT(TIME, DATEADD(MINUTE, ABS(CHECKSUM(NEWID()) % 1440), '00:00:00')) AS Scale_Time;
-
-        SET @i = @i + 1;
-    END;
+	INSERT INTO Flight_Scale (Scale_Type, Scale_Time) VALUES 
+	('Technical scale', '01:00:00'), 
+	('Regular scale', '00:40:00'), 
+	('Connected flight','00:30:00' );
 END;
 GO
-
 --=====================================================================
 --Procedure for InsertScales
 CREATE PROCEDURE InsertScales
@@ -362,18 +344,19 @@ GO
 
 --======================================================================
 -- Crear el procedimiento para cargar datos desde el CSV
+
 CREATE PROCEDURE LoadPersonDataFrom
 AS
-BEGIN
+BEGIN     
     -- Crear una tabla temporal para cargar los datos desde el CSV
-    CREATE TABLE #TempPersonData (
+    CREATE TABLE TempPersonData (
         Name VARCHAR(50),
         Phone VARCHAR(20),
         Email VARCHAR(50)
     );
 	
     -- Cargar los datos del CSV a la tabla temporal
-    BULK INSERT #TempPersonData
+    BULK INSERT TempPersonData
     FROM 'C:\Users\usuario\Desktop\uagrm\2-2024\soport\Script\person.csv'--cambiar la ruta del archivo
     WITH (
         FIELDTERMINATOR = ',',
@@ -382,6 +365,7 @@ BEGIN
     );
 END;
 GO
+
 
 --Procedure for Person
 CREATE PROCEDURE InsertDataFromTempToPerson
@@ -396,7 +380,7 @@ BEGIN
 
     -- Declarar el cursor para iterar sobre los datos de #TempPersonData
     DECLARE cur CURSOR FOR
-    SELECT Name, Phone, Email FROM #TempPersonData;  -- Asegúrate de que #TempPersonData tenga los datos correctos
+    SELECT Name, Phone, Email FROM TempPersonData;  -- Asegúrate de que #TempPersonData tenga los datos correctos
 
     -- Abrir el cursor
     OPEN cur;
@@ -461,6 +445,7 @@ GO
 
 --=============================================================================
 --Procedure for Crew_Member
+
 CREATE PROCEDURE InsertCrewMembers
     @NumberOfRows INT -- Cantidad de miembros de la tripulación a insertar
 AS
@@ -473,7 +458,7 @@ BEGIN
         INSERT INTO Crew_Member (Flying_Hours, Type, Person_ID)
         SELECT 
             -- Horas de vuelo aleatorias entre 0 y 1000
-            ABS(CHECKSUM(NEWID()) % 1001) AS Flying_Hours,
+            ABS(CHECKSUM(NEWID()) % 500) AS Flying_Hours,
             -- Tipo aleatorio ('Crew Member' o 'Both')
             CASE ABS(CHECKSUM(NEWID()) % 2)
                 WHEN 0 THEN 'Crew Member'

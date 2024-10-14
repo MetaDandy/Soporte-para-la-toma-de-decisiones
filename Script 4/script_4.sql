@@ -1,4 +1,5 @@
 
+
 if db_id('script4') is null
 begin
 	create database script4;
